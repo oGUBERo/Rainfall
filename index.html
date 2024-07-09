@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainfall Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #rainfall-container, #rainfall-table { margin-bottom: 20px; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        canvas { max-width: 800px; }
+    </style>
+</head>
+<body>
+    <div id="rainfall-container"></div>
+    <div id="rainfall-table"></div>
+    <canvas id="rainfallChart"></canvas>
+    <div>
+        <label for="days-input">Number of days to fetch:</label>
+        <input type="number" id="days-input" min="1" value="30">
+        <button id="update-button">Update Data and Graph</button>
+    </div>
+
+    <script>
+    let rainfallData = [];
+    let chart;
+
+    function getRainfallData() {
+        const numberOfDays = parseInt(document.getElementById('days-input').value) || 30;
+        const today = new Date();
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - numberOfDays);
+
+        const startDateString = startDate.toISOString().split('T')[0];
+        const endDateString = today.toISOString().split('T')[0];
+
+        console.log(`Fetching data from ${startDateString} to ${endDateString}`);
+
+        fetch(`https://environment.data.gov.uk/flood-monitoring/id/stations/E14920/readings?startdate=${startDateString}&enddate=${endDateString}&_limit=10000`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Raw API response:', data);
+                console.log('Number of items:', data.items.length);
+                console.log('First item:', data.items[0]);
+                console.log('Last item:', data.items[data.items.length - 1]);
+                rainfallData = processRainfallData(data.items);
+                updateDisplay();
+                createChart();
+                document.getElementById('update-button').addEventListener('click', updateGraph);
+            })
+            .catch(error => {
+                console.error('Error fetching rainfall data:', error);
+                document.getElementById('rainfall-container').innerHTML = 'Error fetching rainfall data';
+            });
+    }
+
+    function processRainfallData(items) {
+        console.log('Total items received:', items.length);
+        
+        const dailyRainfall = {};
+        items.forEach(item => {
+            const date = item.dateTime.split('T')[0];
+            const time = item.dateTime.split('T')[1].split(':')[0] + ':' + item.dateTime.split('T')[1].split(':')[1];
+            if (!dailyRainfall[date]) {
+                dailyRainfall[date] = {
+                    firstReading: { time: time, value: item.value },
+                    readings: []
+                };
+            }
+            dailyRainfall[date].readings.push({ time: time, value: item.value });
+        });
+
+        const sortedData = Object.entries(dailyRainfall)
+            .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+            .map(([date, data]) => ({
+                date,
+                firstReading: data.firstReading.value,
+                dailyTotal: data.readings.reduce((sum, reading) => sum + reading.value, 0),
+                readingsCount: data.readings.length
+            }));
+
+        console.log('Processed rainfall data:', sortedData);
+        return sortedData;
+    }
+
+    function updateDisplay(numberOfDays) {
+        const today = new Date().toISOString().split('T')[0];
+        const todayData = rainfallData.find(d => d.date === today);
+        const lastNDays = rainfallData.slice(-numberOfDays);
+
+        const todayRainfall = todayData ? todayData.firstReading : 0;
+        const todayTotal = todayData ? todayData.dailyTotal : 0;
+        const lastNDaysFirstReadings = lastNDays.reduce((sum, d) => sum + d.firstReading, 0);
+        const lastNDaysTotals = lastNDays.reduce((sum, d) => sum + d.dailyTotal, 0);
+
+        document.getElementById('rainfall-container').innerHTML = `
+            <h2>Rainfall Data</h2>
+            <p>Today's first reading: ${todayRainfall.toFixed(1)} mm</p>
+            <p>Today's total: ${todayTotal.toFixed(1)} mm</p>
+            <p>Last ${numberOfDays} days (first readings): ${lastNDaysFirstReadings.toFixed(1)} mm</p>
+            <p>Last ${numberOfDays} days (daily totals): ${lastNDaysTotals.toFixed(1)} mm</p>
+            <p>Average daily rainfall (last ${numberOfDays} days, first readings): ${(lastNDaysFirstReadings / numberOfDays).toFixed(1)} mm</p>
+            <p>Average daily rainfall (last ${numberOfDays} days, daily totals): ${(lastNDaysTotals / numberOfDays).toFixed(1)} mm</p>
+        `;
+
+        updateTable(numberOfDays);
+    }
+
+    function updateTable(numberOfDays) {
+        let tableHTML = `
+            <h3>Daily Rainfall for the Last ${numberOfDays} Days</h3>
+            <table>
+                <tr><th>Date</th><th>First Reading (mm)</th><th>Daily Total (mm)</th><th>Readings Count</th></tr>
+        `;
+
+        const lastNDays = rainfallData.slice(-numberOfDays);
+        lastNDays.forEach(day => {
+            tableHTML += `<tr>
+                <td>${day.date}</td>
+                <td>${day.firstReading.toFixed(1)}</td>
+                <td>${day.dailyTotal.toFixed(1)}</td>
+                <td>${day.readingsCount}</td>
+            </tr>`;
+        });
+
+        tableHTML += '</table>';
+        document.getElementById('rainfall-table').innerHTML = tableHTML;
+    }
+
+    function createChart() {
+        if (chart) {
+            chart.destroy();
+        }
+        const ctx = document.getElementById('rainfallChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: rainfallData.map(d => d.date),
+                datasets: [{
+                    label: 'Daily Rainfall (mm)',
+                    data: rainfallData.map(d => d.dailyTotal),
+                    borderColor: 'blue',
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function updateGraph() {
+        const numberOfDays = parseInt(document.getElementById('days-input').value) || 30;
+        const lastNDays = rainfallData.slice(-numberOfDays);
+        createChart(); // Re-create the chart instead of updating
+        updateDisplay(numberOfDays);
+    }
+
+    document.getElementById('update-button').addEventListener('click', getRainfallData);
+
+    getRainfallData();
+    </script>
+</body>
+</html>
