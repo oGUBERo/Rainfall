@@ -14,6 +14,20 @@
         table { border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         canvas { max-width: 800px; }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 
@@ -25,6 +39,9 @@
         <label for="days-input">Number of days to fetch:</label>
         <input type="number" id="days-input" min="1" value="30">
         <button id="update-button">Update Data and Graph</button>
+    </div>
+    <div>
+        <a href="Rainfall-station-location.html" class="button">View Rainfall Station Locations</a>
     </div>
 
     <script>
