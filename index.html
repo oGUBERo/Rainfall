@@ -152,35 +152,19 @@
                 <div>
                     <label for="distance">Distance (km):</label>
                     <select id="distance">
-                        <option value="5">5</option>
                         <option value="10" selected>10</option>
                         <option value="20">20</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
                 </div>
+                <button id="nearMeBtn">Locations near me</button>
             </div>
+
             <p id="instructions">Click on the map to set a custom search location</p>
             <div id="map-container">
                 <div id="map"></div>
                 <div id="map-loading">Loading map...</div>
-            </div>
-            <button id="toggleTableBtn">Show/Hide Station Table</button>
-            <div id="stationTableContainer" style="display: none;">
-                <table id="stationTable">
-                    <thead>
-                        <tr>
-                            <th>Station Reference</th>
-                            <th>Latitude</th>
-                            <th>Longitude</th>
-                            <th>Grid Reference</th>
-                            <th>Label</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Table content will be dynamically populated -->
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -338,14 +322,13 @@
             // Clear existing markers and table rows
             markers.forEach(marker => map.removeLayer(marker));
             markers = [];
-            document.querySelector('#stationTable tbody').innerHTML = '';
+            //document.querySelector('#stationTable tbody').innerHTML = '';
 
             // Fetch data from the API with user-defined parameters
             fetch(`https://environment.data.gov.uk/flood-monitoring/id/stations?parameter=rainfall&lat=${lat}&long=${long}&dist=${dist}`)
                 .then(response => response.json())
                 .then(data => {
                     const stations = data.items;
-                    const tableBody = document.querySelector('#stationTable tbody');
 
                     stations.forEach(station => {
                         // Add marker to the map
@@ -360,13 +343,7 @@
                         
                         markers.push(marker);
 
-                        // Add row to the table
-                        const row = tableBody.insertRow();
-                        row.insertCell(0).textContent = station.stationReference;
-                        row.insertCell(1).textContent = station.lat;
-                        row.insertCell(2).textContent = station.long;
-                        row.insertCell(3).textContent = station.gridReference;
-                        row.insertCell(4).textContent = station.label;
+
                     });
 
                     // Center the map on the search location
@@ -375,24 +352,21 @@
                 .catch(error => console.error('Error fetching data:', error));
         }
 
-        function initializeMap(position) {
-            const lat = position.coords.latitude;
-            const long = position.coords.longitude;
+        function initializeMap() {
+        const defaultLat = 50.691845;
+        const defaultLong = -1.308358;
 
             // Set initial view
-            map.setView([lat, long], 10);
+            map.setView([defaultLat, defaultLong], 10);
 
-            // Add a marker for the user's location
-            userLocation = L.marker([lat, long], {icon: blueIcon}).addTo(map).bindPopup('Your Location').openPopup();
+        // Add a marker for the default location
+        searchLocation = L.marker([defaultLat, defaultLong], {icon: greenIcon}).addTo(map).bindPopup('Default Search Location');
 
-            // Set initial search location
-            searchLocation = L.marker([lat, long], {icon: greenIcon}).addTo(map).bindPopup('Search Location');
+        // Hide loading screen when map is ready
+        document.getElementById('map-loading').style.display = 'none';
 
-            // Hide loading screen when map is ready
-            document.getElementById('map-loading').style.display = 'none';
-
-            // Add click event to the map
-            map.on('click', function(e) {
+        // Add click event to the map
+        map.on('click', function(e) {
                 
                 const clickedLat = e.latlng.lat;
                 const clickedLng = e.latlng.lng;
@@ -410,16 +384,46 @@
             });
 
             // Initial fetch
-            fetchStations(lat, long);
+            fetchStations(defaultLat, defaultLong);
         }
 
         function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(initializeMap, showError);
-            } else {
-                alert("Geolocation is not supported by this browser.");
-            }
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(updateMapToUserLocation, showError);
+        } else {
+            alert("Geolocation is not supported by this browser.");
         }
+    }
+
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(updateMapToUserLocation, showError);
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    }
+
+    function updateMapToUserLocation(position) {
+        const lat = position.coords.latitude;
+        const long = position.coords.longitude;
+
+        // Update map view
+        map.setView([lat, long], 10);
+
+        // Update search location marker
+        searchLocation.setLatLng([lat, long]);
+        searchLocation.setPopupContent('Your Location');
+        searchLocation.openPopup();
+           // Add or update user location marker
+        if (userLocation) {
+            userLocation.setLatLng([lat, long]);
+        } else {
+            userLocation = L.marker([lat, long], {icon: blueIcon}).addTo(map).bindPopup('Your Location');
+        }
+
+        // Fetch stations for the new location
+        fetchStations(lat, long);
+    }
 
         function showError(error) {
             switch(error.code) {
@@ -452,10 +456,10 @@
             fetchStations(latlng.lat, latlng.lng);
         });
 
-        document.getElementById('toggleTableBtn').addEventListener('click', toggleTableVisibility);
+        document.getElementById('nearMeBtn').addEventListener('click', getLocation);
         document.getElementById('map-loading').style.display = 'flex';
         // Initialize the map
-        getLocation();
+        initializeMap();
     </script>
 </body>
 </html>
