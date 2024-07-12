@@ -161,9 +161,6 @@
         // Rainfall data script
         const rainfallContainer = document.getElementById('rainfall-container');
         const ctx = document.getElementById('rainfallChart').getContext('2d');
-        const daysInput = document.getElementById('days-input');
-        const updateButton = document.getElementById('update-button');
-
         let chart;
 
         async function fetchRainfallData(days) {
@@ -205,7 +202,7 @@
         }
 
         async function updateStationChart(stationReference) {
-            const days = parseInt(daysInput.value);
+            const days = parseInt(daysSlider.value);
             const rawData = await fetchStationData(stationReference, days);
             const processedData = processStationData(rawData);
             createChart(processedData, `Rainfall at Station ${stationReference}`);
@@ -213,7 +210,6 @@
             const totalRainfall = processedData.reduce((sum, item) => sum + parseFloat(item.value), 0).toFixed(2);
             rainfallContainer.innerHTML = `<p>Total rainfall at Station ${stationReference} for the last ${days} days: ${totalRainfall} mm</p>`;
         }
-
         function createChart(data, label = 'Daily Rainfall (mm)') {
             if (chart) {
                 chart.destroy();
@@ -267,9 +263,6 @@
         const totalRainfall = processedData.reduce((sum, item) => sum + parseFloat(item.value), 0).toFixed(2);
         rainfallContainer.innerHTML = `<p>Total rainfall at Station ${defaultStationId} for the last ${days} days: ${totalRainfall} mm</p>`;
     }
-
-    // Remove the event listener for the update button
-    // updateButton.addEventListener('click', updateRainfallData);
 
     // Initial data fetch
     updateRainfallData();
