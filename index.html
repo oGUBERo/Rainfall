@@ -118,7 +118,7 @@
             <div class="slider-container">
                 <input type="range" id="days-slider" min="1" max="30" value="30" step="1">
                 <span id="days-value">30</span> days
-                <button id="update-button">Update Data and Graph</button>
+                <!-- Removed the update button -->
             </div>
         </div>
         <div class="right-column">
@@ -250,10 +250,11 @@
                 }
             });
         }
-    const daysSlider = document.getElementById('days-slider');
+        const daysSlider = document.getElementById('days-slider');
     const daysValue = document.getElementById('days-value');
     daysSlider.addEventListener('input', function() {
         daysValue.textContent = this.value;
+        updateRainfallData(); // Add this line to update data when slider changes
     });
 
     async function updateRainfallData() {
@@ -267,7 +268,8 @@
         rainfallContainer.innerHTML = `<p>Total rainfall at Station ${defaultStationId} for the last ${days} days: ${totalRainfall} mm</p>`;
     }
 
-    updateButton.addEventListener('click', updateRainfallData);
+    // Remove the event listener for the update button
+    // updateButton.addEventListener('click', updateRainfallData);
 
     // Initial data fetch
     updateRainfallData();
