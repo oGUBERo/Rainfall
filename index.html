@@ -106,7 +106,32 @@
     #update-button {
         margin-left: 10px;
     }
-    </style>
+    #map-container {
+        position: relative;
+        width: 100%;
+        height: 400px;
+        margin: 20px 0;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+    }
+
+    #map-loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.2em;
+        z-index: 1000;
+    }
+</style>
 </head>
 <body>
     <h1>Rainfall Data and Station Locations</h1>
@@ -136,7 +161,10 @@
                 </div>
             </div>
             <p id="instructions">Click on the map to set a custom search location</p>
-            <div id="map"></div>
+            <div id="map-container">
+                <div id="map"></div>
+                <div id="map-loading">Loading map...</div>
+            </div>
             <button id="toggleTableBtn">Show/Hide Station Table</button>
             <div id="stationTableContainer" style="display: none;">
                 <table id="stationTable">
@@ -360,6 +388,9 @@
             // Set initial search location
             searchLocation = L.marker([lat, long], {icon: greenIcon}).addTo(map).bindPopup('Search Location');
 
+            // Hide loading screen when map is ready
+            document.getElementById('map-loading').style.display = 'none';
+
             // Add click event to the map
             map.on('click', function(e) {
                 
@@ -422,7 +453,7 @@
         });
 
         document.getElementById('toggleTableBtn').addEventListener('click', toggleTableVisibility);
-
+        document.getElementById('map-loading').style.display = 'flex';
         // Initialize the map
         getLocation();
     </script>
