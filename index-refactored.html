@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainfall Data and Station Locations</title>
+    
+    <!-- External Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <h1>Rainfall Data and Station Locations</h1>
+    
+    <div class="container">
+        <div class="left-column">
+            <h2>Rainfall Data</h2>
+            <div id="rainfall-container"></div>
+            <canvas id="rainfallChart"></canvas>
+            <div class="slider-container">
+                <input type="range" id="days-slider" min="1" max="30" value="30" step="1">
+                <span id="days-value">30</span> days
+            </div>
+        </div>
+        
+        <div class="right-column">
+            <h2>Rainfall Station Locations</h2>
+            <div class="search-controls">
+                <div>
+                    <label for="distance">Distance (km):</label>
+                    <select id="distance">
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <button id="nearMeBtn">Locations near me</button>
+            </div>
+
+            <p id="instructions">Click on the map to set a custom search location</p>
+            <div id="map-container">
+                <div id="map"></div>
+                <div id="map-loading">Loading map...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
