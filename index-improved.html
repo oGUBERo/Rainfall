@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Rainfall Monitor - Live Data Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        .panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: #333;
+            font-size: 1.5em;
+        }
+        
+        .station-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .station-name {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+        
+        .statistics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .chart-container {
+            position: relative;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            height: 500px;
+        }
+        
+        .chart-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            z-index: 10;
+        }
+        
+        .chart-loading.show {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            box-shadow: none;
+        }
+        
+        button.secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .map-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .distance-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        #map-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .map-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .map-loading.hide {
+            display: none;
+        }
+        
+        .legend {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        
+        .legend-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        
+        .legend-icon.green { background: #10b981; }
+        .legend-icon.red { background: #ef4444; }
+        .legend-icon.blue { background: #3b82f6; }
+        .legend-icon.yellow { background: #f59e0b; }
+        
+        .station-count {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .no-stations {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        /* First-time tooltips */
+        .tooltip-overlay {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 2000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            max-width: 300px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+        
+        .tooltip-overlay.show {
+            opacity: 1;
+        }
+        
+        .tooltip-overlay::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        
+        /* Mobile responsiveness */
+        @media screen and (max-width: 768px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+            
+            #map-container {
+                height: 400px;
+            }
+            
+            .statistics {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        /* Marker animations */
+        @keyframes markerPulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .leaflet-marker-icon {
+            animation: markerPulse 0.5s ease-out;
+        }
+        
+        /* Keyboard shortcut hints */
+        .kbd {
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.85em;
+            font-family: monospace;
+        }
+        
+        .shortcuts-hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <header>
+            <h1>🌧️ UK Rainfall Monitor</h1>
+            <p class="subtitle">Real-time rainfall data from Environment Agency stations</p>
+        </header>
+        
+        <div class="content-wrapper">
+            <!-- Left Panel - Chart and Data -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Rainfall Analysis</h2>
+                </div>
+                
+                <div class="station-info">
+                    <div class="station-name" id="current-station">Loading...</div>
+                    <div id="station-details">Waiting for location or station selection</div>
+                </div>
+                
+                <div class="statistics" id="statistics">
+                    <div class="stat-card">
+                        <div class="stat-label">Total</div>
+                        <div class="stat-value" id="stat-total">📍</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Average</div>
+                        <div class="stat-value" id="stat-avg">🌧️</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Maximum</div>
+                        <div class="stat-value" id="stat-max">⏳</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Minimum</div>
+                        <div class="stat-value" id="stat-min">🎯</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="rainfallChart"></canvas>
+                    <div class="chart-loading" id="chart-loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                
+                <div class="error-message" id="chart-error">
+                    <strong>Error loading data</strong>
+                    <p id="chart-error-text"></p>
+                    <button onclick="retryChartLoad()" class="secondary">Retry</button>
+                </div>
+            </div>
+            
+            <!-- Right Panel - Map -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Station Locations</h2>
+                    <button id="resetViewBtn" class="secondary">Reset View</button>
+                </div>
+                
+                <div class="map-controls">
+                    <div class="distance-control">
+                        <label for="distance">Search Radius:</label>
+                        <select id="distance">
+                            <option value="10">10 km</option>
+                            <option value="20" selected>20 km</option>
+                            <option value="50">50 km</option>
+                            <option value="100">100 km</option>
+                        </select>
+                    </div>
+                    <button id="nearMeBtn">📍 Find Near Me</button>
+                </div>
+                
+                <div id="map-container">
+                    <div id="map"></div>
+                    <div class="map-loading" id="map-loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                <div class="station-count" id="station-count" style="display:none;">
+                    Found <span id="count-number">0</span> stations
+                </div>
+                
+                <div class="no-stations" id="no-stations" style="display:none;">
+                    No stations found in this area. Try increasing the search radius or clicking a different location.
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-title">Map Legend</div>
+                    <div class="legend-item">
+                        <div class="legend-icon green"></div>
+                        <span>Search Location</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon red"></div>
+                        <span>Rainfall Station</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon yellow"></div>
+                        <span>Selected Station</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon blue"></div>
+                        <span>Your Location</span>
+                    </div>
+                </div>
+                
+                <div class="error-message" id="map-error">
+                    <strong>Error loading stations</strong>
+                    <p id="map-error-text"></p>
+                    <button onclick="retryMapLoad()" class="secondary">Retry</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tooltips -->
+    <div id="tooltip-chart" class="tooltip-overlay">
+        📈 Hover over chart bars to see exact rainfall values
+    </div>
+    <div id="tooltip-marker" class="tooltip-overlay">
+        💡 Click any red marker to view rainfall data
+    </div>
+    <div id="tooltip-map" class="tooltip-overlay">
+        📍 Click anywhere on the map to search for stations
+    </div>
+    
+    <!-- Keyboard shortcuts hint -->
+    <div class="shortcuts-hint" id="shortcuts-hint" style="display:none;">
+        Press <kbd>R</kbd> to reset view | <kbd>ESC</kbd> to close tooltips
+    </div>
+    
+    <script>
+        // Global variables
+        let chart;
+        let map;
+        let markers = [];
+        let userLocation;
+        let searchLocation;
+        let selectedMarker;
+        let currentStation = null; // No default station initially
+        let isUpdating = false;
+        let allStations = []; // Store all fetched stations
+        let hasLoadedInitialData = false;
+        
+        // UK boundaries
+        const ukBounds = L.latLngBounds(
+            L.latLng(49.5, -8.5),
+            L.latLng(61.0, 2.0)
+        );
+        
+        // Custom icons
+        const blueIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        const redIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        const greenIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        const yellowIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            initializeChart();
+            setupEventListeners();
+            showFirstTimeTooltips();
+            loadSavedStationOrWaitForLocation();
+        });
+        
+        // Initialize map
+        function initializeMap() {
+            map = L.map('map', {
+                maxBounds: ukBounds,
+                maxBoundsViscosity: 1.0,
+                minZoom: 6,
+                maxZoom: 18
+            });
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Set initial view to UK
+            map.setView([54.5, -2.0], 6);
+            
+            // Hide loading
+            document.getElementById('map-loading').classList.add('hide');
+            
+            // Map click event
+            map.on('click', function(e) {
+                handleMapClick(e.latlng.lat, e.latlng.lng);
+            });
+            
+            // Double-click zoom
+            map.on('dblclick', function(e) {
+                map.setZoomAround(e.latlng, map.getZoom() + 1);
+            });
+            
+            // Don't auto-request location on initial load
+            // User must explicitly allow location or select a station
+        }
+        
+        // Initialize chart
+        function initializeChart() {
+            const ctx = document.getElementById('rainfallChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Daily Rainfall (mm)',
+                        data: [],
+                        backgroundColor: [],
+                        borderColor: [],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Rainfall: ${context.parsed.y} mm`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Rainfall (mm)',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            
+            // Buttons
+            document.getElementById('nearMeBtn').addEventListener('click', getLocation);
+            document.getElementById('resetViewBtn').addEventListener('click', resetMapView);
+            document.getElementById('distance').addEventListener('change', function() {
+                if (searchLocation) {
+                    const latlng = searchLocation.getLatLng();
+                    fetchStations(latlng.lat, latlng.lng, true);
+                }
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    hideTooltips();
+                } else if (e.key.toLowerCase() === 'r') {
+                    resetMapView();
+                }
+            });
+        }
+        
+        // Fetch rainfall data
+        async function fetchRainfallData(stationId, days) {
+            try {
+                const response = await fetch(
+                    `https://environment.data.gov.uk/flood-monitoring/id/stations/${stationId}/readings?_sorted&_limit=${days * 96}&parameter=rainfall`
+                );
+                if (!response.ok) throw new Error('Failed to fetch data');
+                const data = await response.json();
+                return data.items;
+            } catch (error) {
+                showChartError(error.message);
+                throw error;
+            }
+        }
+        
+        // Process rainfall data
+        function processRainfallData(data) {
+            const dailyRainfall = {};
+            
+            data.forEach(item => {
+                const dateObj = new Date(item.dateTime);
+                const dateKey = dateObj.toLocaleDateString();
+                const value = parseFloat(item.value);
+                
+                if (!dailyRainfall[dateKey]) {
+                    dailyRainfall[dateKey] = 0;
+                }
+                dailyRainfall[dateKey] += value;
+            });
+            
+            // Sort chronologically
+            return Object.entries(dailyRainfall)
+                .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+                .map(([date, value]) => {
+                    const dateObj = new Date(date);
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const formattedDate = `${monthNames[dateObj.getMonth()]} ${dateObj.getDate()}`;
+                    return { date: formattedDate, value: value.toFixed(2) };
+                });
+        }
+        
+        // Update rainfall data and chart
+        async function updateRainfallData() {
+            if (isUpdating || !currentStation) return;
+            isUpdating = true;
+            
+            // Show loading
+            document.getElementById('chart-loading').classList.add('show');
+            hideChartError();
+            
+            try {
+                const days = 30; // Fixed 30 days
+                const rawData = await fetchRainfallData(currentStation, days);
+                const processedData = processRainfallData(rawData);
+                
+                // Update statistics
+                updateStatistics(processedData);
+                
+                // Update chart with color coding
+                updateChart(processedData);
+                
+                hasLoadedInitialData = true;
+                
+            } catch (error) {
+                console.error('Error updating rainfall data:', error);
+            } finally {
+                document.getElementById('chart-loading').classList.remove('show');
+                isUpdating = false;
+            }
+        }
+        
+        // Update statistics
+        function updateStatistics(data) {
+            const values = data.map(item => parseFloat(item.value));
+            const total = values.reduce((sum, val) => sum + val, 0);
+            const avg = total / values.length;
+            const max = Math.max(...values);
+            const min = Math.min(...values);
+            
+            document.getElementById('stat-total').textContent = `${total.toFixed(1)} mm`;
+            document.getElementById('stat-avg').textContent = `${avg.toFixed(1)} mm`;
+            document.getElementById('stat-max').textContent = `${max.toFixed(1)} mm`;
+            document.getElementById('stat-min').textContent = `${min.toFixed(1)} mm`;
+        }
+        
+        // Update chart with color coding
+        function updateChart(data) {
+            const values = data.map(item => parseFloat(item.value));
+            
+            // Color code by intensity
+            const colors = values.map(value => {
+                if (value < 5) return 'rgba(147, 197, 253, 0.8)';  // Light blue
+                if (value < 10) return 'rgba(59, 130, 246, 0.8)';  // Medium blue
+                if (value < 20) return 'rgba(37, 99, 235, 0.8)';   // Dark blue
+                return 'rgba(30, 64, 175, 0.8)';                    // Very dark blue
+            });
+            
+            const borderColors = values.map(value => {
+                if (value < 5) return 'rgba(147, 197, 253, 1)';
+                if (value < 10) return 'rgba(59, 130, 246, 1)';
+                if (value < 20) return 'rgba(37, 99, 235, 1)';
+                return 'rgba(30, 64, 175, 1)';
+            });
+            
+            chart.data.labels = data.map(item => item.date);
+            chart.data.datasets[0].data = values;
+            chart.data.datasets[0].backgroundColor = colors;
+            chart.data.datasets[0].borderColor = borderColors;
+            chart.update();
+        }
+        
+        // Calculate distance between two points (Haversine formula)
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Distance in kilometers
+        }
+
+        // Find closest station to a point
+        function findClosestStation(lat, lng, stations) {
+            if (stations.length === 0) return null;
+            
+            let closestStation = stations[0];
+            let minDistance = calculateDistance(lat, lng, closestStation.lat, closestStation.long);
+            
+            for (let i = 1; i < stations.length; i++) {
+                const distance = calculateDistance(lat, lng, stations[i].lat, stations[i].long);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestStation = stations[i];
+                }
+            }
+            
+            return { station: closestStation, distance: minDistance };
+        }
+        
+        // Fetch stations
+        async function fetchStations(lat, lng, autoSelectClosest = false) {
+            const dist = document.getElementById('distance').value;
+            
+            // Show loading
+            document.getElementById('map-loading').classList.remove('hide');
+            hideMapError();
+            
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            try {
+                const response = await fetch(
+                    `https://environment.data.gov.uk/flood-monitoring/id/stations?parameter=rainfall&lat=${lat}&long=${lng}&dist=${dist}`
+                );
+                if (!response.ok) throw new Error('Failed to fetch stations');
+                const data = await response.json();
+                const stations = data.items;
+                
+                // Store stations for closest station calculation
+                allStations = stations;
+                
+                // Update station count
+                updateStationCount(stations.length);
+                
+                if (stations.length === 0) {
+                    showNoStations();
+                    return;
+                }
+                
+                hideNoStations();
+                
+                // Find closest station if requested
+                let closestResult = null;
+                if (autoSelectClosest && stations.length > 0) {
+                    closestResult = findClosestStation(lat, lng, stations);
+                }
+                
+                // Add markers with animation
+                stations.forEach((station, index) => {
+                    setTimeout(() => {
+                        const isClosest = closestResult && station.stationReference === closestResult.station.stationReference;
+                        const marker = L.marker([station.lat, station.long], {
+                            icon: isClosest ? yellowIcon : redIcon
+                        })
+                            .addTo(map)
+                            .bindPopup(`<strong>${station.label}</strong><br>ID: ${station.stationReference}${isClosest ? '<br><em>Closest station (' + closestResult.distance.toFixed(1) + ' km)</em>' : ''}`);
+                        
+                        marker.on('click', function() {
+                            selectStation(station, marker);
+                        });
+                        
+                        markers.push(marker);
+                        
+                        // Auto-select closest station
+                        if (isClosest) {
+                            selectedMarker = marker;
+                            selectStation(station, marker);
+                        }
+                    }, index * 50); // Stagger animation
+                });
+                
+                // Center map on search area
+                map.setView([lat, lng], 10);
+                
+            } catch (error) {
+                showMapError(error.message);
+            } finally {
+                document.getElementById('map-loading').classList.add('hide');
+            }
+        }
+        
+        // Select station
+        function selectStation(station, marker) {
+            // Reset previous selected marker
+            if (selectedMarker) {
+                selectedMarker.setIcon(redIcon);
+            }
+            
+            // Highlight selected marker
+            marker.setIcon(yellowIcon);
+            selectedMarker = marker;
+            
+            // Update current station
+            currentStation = station.stationReference;
+            document.getElementById('current-station').textContent = station.label;
+            document.getElementById('station-details').textContent = `Station ID: ${station.stationReference}`;
+            
+            // Save to localStorage
+            saveSelectedStation(station);
+            
+            // Update rainfall data
+            updateRainfallData();
+        }
+        
+        // Handle map click
+        function handleMapClick(lat, lng) {
+            // Update or create search location marker
+            if (!searchLocation) {
+                searchLocation = L.marker([lat, lng], {icon: greenIcon}).addTo(map);
+            } else {
+                searchLocation.setLatLng([lat, lng]);
+            }
+            
+            searchLocation.setPopupContent(`Search Location<br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
+            searchLocation.openPopup();
+            
+            // Fetch stations and auto-select closest one
+            fetchStations(lat, lng, true);
+        }
+        
+        // Get user location
+        function getLocation() {
+            if (navigator.geolocation) {
+                // Show loading while getting location
+                document.getElementById('map-loading').classList.remove('hide');
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        updateMapToUserLocation(position);
+                        document.getElementById('map-loading').classList.add('hide');
+                    }, 
+                    function(error) {
+                        showLocationError(error);
+                        document.getElementById('map-loading').classList.add('hide');
+                        
+                        // If location is denied and we haven't loaded any data yet, load UK center fallback
+                        if (!hasLoadedInitialData) {
+                            setTimeout(() => {
+                                loadUKCenterFallback();
+                            }, 1000);
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 60000
+                    }
+                );
+            } else {
+                alert("Geolocation is not supported by this browser.");
+                // If no geolocation support and no data loaded, use UK center fallback
+                if (!hasLoadedInitialData) {
+                    loadUKCenterFallback();
+                }
+            }
+        }
+        
+        // Update map to user location
+        function updateMapToUserLocation(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            console.log('User location found:', lat, lng);
+            
+            // Update map view with animation
+            map.flyTo([lat, lng], 12, {
+                animate: true,
+                duration: 1.5
+            });
+            
+            // Add or update user location marker
+            if (userLocation) {
+                userLocation.setLatLng([lat, lng]);
+                userLocation.setPopupContent('Your Location');
+            } else {
+                userLocation = L.marker([lat, lng], {icon: blueIcon})
+                    .addTo(map)
+                    .bindPopup('Your Location')
+                    .openPopup();
+            }
+            
+            // Update search location marker
+            if (!searchLocation) {
+                searchLocation = L.marker([lat, lng], {icon: greenIcon})
+                    .addTo(map)
+                    .bindPopup('Search Location (Your Location)');
+            } else {
+                searchLocation.setLatLng([lat, lng]);
+                searchLocation.setPopupContent('Search Location (Your Location)');
+            }
+            
+            // Fetch stations near user location and auto-select closest
+            fetchStations(lat, lng, true);
+        }
+        
+        // Show location error
+        function showLocationError(error) {
+            let message = "Unable to get your location.";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = "Location access denied. Please enable location services.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    message = "Location request timed out.";
+                    break;
+            }
+            alert(message);
+        }
+        
+        // Reset map view
+        function resetMapView() {
+            map.setView([54.5, -2.0], 6);
+            
+            // Clear markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            if (searchLocation) {
+                map.removeLayer(searchLocation);
+                searchLocation = null;
+            }
+            
+            hideNoStations();
+            updateStationCount(0);
+        }
+        
+        // Load saved station or wait for user action
+        async function loadSavedStationOrWaitForLocation() {
+            const savedStation = getSavedStation();
+            
+            if (savedStation) {
+                console.log('Loading saved station:', savedStation.label);
+                currentStation = savedStation.stationReference;
+                document.getElementById('current-station').textContent = savedStation.label + ' (Saved)';
+                document.getElementById('station-details').textContent = `Station ID: ${savedStation.stationReference}`;
+                await updateRainfallData();
+                hasLoadedInitialData = true;
+            } else {
+                console.log('No saved station, waiting for user location or manual selection');
+                // Chart stays in standby mode until user action
+                showStandbyMessage();
+            }
+        }
+        
+        // Save selected station to localStorage
+        function saveSelectedStation(station) {
+            const stationData = {
+                stationReference: station.stationReference,
+                label: station.label,
+                lat: station.lat,
+                long: station.long,
+                savedAt: new Date().toISOString()
+            };
+            localStorage.setItem('selectedStation', JSON.stringify(stationData));
+            console.log('Station saved to localStorage:', stationData.label);
+        }
+        
+        // Get saved station from localStorage
+        function getSavedStation() {
+            try {
+                const saved = localStorage.getItem('selectedStation');
+                if (saved) {
+                    const stationData = JSON.parse(saved);
+                    // Check if saved data is not too old (7 days)
+                    const savedDate = new Date(stationData.savedAt);
+                    const now = new Date();
+                    const daysDiff = (now - savedDate) / (1000 * 60 * 60 * 24);
+                    
+                    if (daysDiff <= 7) {
+                        return stationData;
+                    } else {
+                        // Remove old saved station
+                        localStorage.removeItem('selectedStation');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading saved station:', error);
+                localStorage.removeItem('selectedStation');
+            }
+            return null;
+        }
+        
+        // Show standby message
+        function showStandbyMessage() {
+            document.getElementById('current-station').textContent = 'No Station Selected';
+            document.getElementById('station-details').innerHTML = 'Click "Find Near Me" or select a location on the map to view rainfall data';
+        }
+        
+        // Fallback to UK center station when no location permission
+        async function loadUKCenterFallback() {
+            console.log('Loading UK center fallback station');
+            // Use a station in central England - let's try a Birmingham area station
+            const centralLat = 52.4862; // Birmingham area
+            const centralLng = -1.8904;
+            
+            try {
+                const response = await fetch(
+                    `https://environment.data.gov.uk/flood-monitoring/id/stations?parameter=rainfall&lat=${centralLat}&long=${centralLng}&dist=50&_limit=1`
+                );
+                const data = await response.json();
+                
+                if (data.items && data.items.length > 0) {
+                    const station = data.items[0];
+                    currentStation = station.stationReference;
+                    document.getElementById('current-station').textContent = station.label + ' (UK Center)';
+                    document.getElementById('station-details').textContent = `Station ID: ${station.stationReference} - Central UK fallback`;
+                    await updateRainfallData();
+                    hasLoadedInitialData = true;
+                } else {
+                    // If no stations found in Birmingham area, use the original default
+                    currentStation = 'E7050';
+                    document.getElementById('current-station').textContent = 'Station E7050 (Default)';
+                    document.getElementById('station-details').textContent = 'Default station - Isle of Wight';
+                    await updateRainfallData();
+                    hasLoadedInitialData = true;
+                }
+            } catch (error) {
+                console.error('Error loading UK center station:', error);
+                // Fall back to original default
+                currentStation = 'E7050';
+                document.getElementById('current-station').textContent = 'Station E7050 (Default)';
+                document.getElementById('station-details').textContent = 'Default station - Isle of Wight';
+                await updateRainfallData();
+                hasLoadedInitialData = true;
+            }
+        }
+        
+        // Update station count
+        function updateStationCount(count) {
+            const countElement = document.getElementById('station-count');
+            if (count > 0) {
+                document.getElementById('count-number').textContent = count;
+                countElement.style.display = 'inline-block';
+            } else {
+                countElement.style.display = 'none';
+            }
+        }
+        
+        // Show/hide no stations message
+        function showNoStations() {
+            document.getElementById('no-stations').style.display = 'block';
+        }
+        
+        function hideNoStations() {
+            document.getElementById('no-stations').style.display = 'none';
+        }
+        
+        // Error handling
+        function showChartError(message) {
+            document.getElementById('chart-error-text').textContent = message;
+            document.getElementById('chart-error').classList.add('show');
+        }
+        
+        function hideChartError() {
+            document.getElementById('chart-error').classList.remove('show');
+        }
+        
+        function showMapError(message) {
+            document.getElementById('map-error-text').textContent = message;
+            document.getElementById('map-error').classList.add('show');
+        }
+        
+        function hideMapError() {
+            document.getElementById('map-error').classList.remove('show');
+        }
+        
+        function retryChartLoad() {
+            updateRainfallData();
+        }
+        
+        function retryMapLoad() {
+            if (searchLocation) {
+                const latlng = searchLocation.getLatLng();
+                fetchStations(latlng.lat, latlng.lng, true);
+            }
+        }
+        
+        // First-time tooltips
+        function showFirstTimeTooltips() {
+            if (localStorage.getItem('tooltipsShown') === 'true') {
+                return;
+            }
+            
+            // Position and show tooltips
+            setTimeout(() => {
+                const chartTooltip = document.getElementById('tooltip-chart');
+                const canvas = document.getElementById('rainfallChart');
+                if (chartTooltip && canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    chartTooltip.style.position = 'fixed';
+                    chartTooltip.style.top = (rect.top + rect.height / 2) + 'px';
+                    chartTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                    chartTooltip.style.transform = 'translate(-50%, -50%)';
+                    chartTooltip.classList.add('show');
+                }
+            }, 1000);
+            
+            setTimeout(() => {
+                const markerTooltip = document.getElementById('tooltip-marker');
+                if (markerTooltip) {
+                    const mapElement = document.getElementById('map');
+                    const rect = mapElement.getBoundingClientRect();
+                    markerTooltip.style.position = 'fixed';
+                    markerTooltip.style.top = (rect.top + 100) + 'px';
+                    markerTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                    markerTooltip.style.transform = 'translateX(-50%)';
+                    markerTooltip.classList.add('show');
+                }
+            }, 2500);
+            
+            setTimeout(() => {
+                const mapTooltip = document.getElementById('tooltip-map');
+                if (mapTooltip) {
+                    const mapElement = document.getElementById('map');
+                    const rect = mapElement.getBoundingClientRect();
+                    mapTooltip.style.position = 'fixed';
+                    mapTooltip.style.bottom = '100px';
+                    mapTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                    mapTooltip.style.transform = 'translateX(-50%)';
+                    mapTooltip.classList.add('show');
+                }
+            }, 4000);
+            
+            // Show keyboard shortcuts hint
+            setTimeout(() => {
+                document.getElementById('shortcuts-hint').style.display = 'block';
+            }, 5000);
+            
+            // Auto-hide
+            setTimeout(() => {
+                hideTooltips();
+                document.getElementById('shortcuts-hint').style.display = 'none';
+            }, 10000);
+            
+            localStorage.setItem('tooltipsShown', 'true');
+        }
+        
+        function hideTooltips() {
+            const tooltips = document.querySelectorAll('.tooltip-overlay');
+            tooltips.forEach(tooltip => {
+                tooltip.classList.remove('show');
+            });
+        }
+        
+        // Click to dismiss tooltips
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.tooltip-overlay')) {
+                hideTooltips();
+            }
+        });
+    </script>
+</body>
+</html>

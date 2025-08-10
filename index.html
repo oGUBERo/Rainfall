@@ -131,6 +131,84 @@
         font-size: 1.2em;
         z-index: 1000;
     }
+    
+    /* First-time user tooltips */
+    .tooltip-overlay {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 2000;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        max-width: 280px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .tooltip-overlay.show {
+        opacity: 1;
+    }
+    
+    .tooltip-overlay::after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-style: solid;
+    }
+    
+    .tooltip-marker {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -100%);
+        margin-top: -10px;
+    }
+    
+    .tooltip-marker::after {
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 8px 8px 0 8px;
+        border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
+    }
+    
+    .tooltip-map {
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .tooltip-map::after {
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 0 8px 8px 8px;
+        border-color: transparent transparent rgba(0, 0, 0, 0.85) transparent;
+    }
+    
+    .tooltip-chart {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .tooltip-dismiss {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        pointer-events: auto;
+    }
+    
+    .tooltip-dismiss:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
 </style>
 </head>
 <body>
@@ -140,6 +218,9 @@
             <h2>Rainfall Data</h2>
             <div id="rainfall-container"></div>
             <canvas id="rainfallChart"></canvas>
+            <div id="tooltip-chart" class="tooltip-overlay tooltip-chart">
+                📈 Hover over chart bars to see exact rainfall values for each day
+            </div>
             <div class="slider-container">
                 <input type="range" id="days-slider" min="1" max="30" value="30" step="1">
                 <span id="days-value">30</span> days
@@ -165,6 +246,12 @@
             <div id="map-container">
                 <div id="map"></div>
                 <div id="map-loading">Loading map...</div>
+                <div id="tooltip-marker" class="tooltip-overlay tooltip-marker">
+                    💡 Click any red marker to view rainfall data for that station
+                </div>
+                <div id="tooltip-map" class="tooltip-overlay tooltip-map">
+                    📍 Click anywhere on the map to search for stations in that area
+                </div>
             </div>
         </div>
     </div>
@@ -183,15 +270,31 @@
 
         function processRainfallData(data) {
             const dailyRainfall = {};
+            const dateToTimestamp = {};
             data.forEach(item => {
-                const date = new Date(item.dateTime).toLocaleDateString();
+                const dateObj = new Date(item.dateTime);
+                const dateKey = dateObj.toLocaleDateString();
                 const value = parseFloat(item.value);
-                if (!dailyRainfall[date]) {
-                    dailyRainfall[date] = 0;
+                if (!dailyRainfall[dateKey]) {
+                    dailyRainfall[dateKey] = 0;
+                    dateToTimestamp[dateKey] = dateObj.getTime();
                 }
-                dailyRainfall[date] += value;
+                dailyRainfall[dateKey] += value;
             });
-            return Object.entries(dailyRainfall).map(([date, value]) => ({ date, value: value.toFixed(2) }));
+            // Sort by actual date values - oldest to newest (latest on right)
+            return Object.entries(dailyRainfall)
+                .sort((a, b) => {
+                    const dateA = new Date(a[0]);
+                    const dateB = new Date(b[0]);
+                    return dateA - dateB;
+                })
+                .map(([date, value]) => {
+                    // Format date as MMM DD (e.g., "Jan 15")
+                    const dateObj = new Date(date);
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const formattedDate = `${monthNames[dateObj.getMonth()]} ${dateObj.getDate()}`;
+                    return { date: formattedDate, value: value.toFixed(2) };
+                });
         }
 
         async function fetchStationData(stationReference, days) {
@@ -202,15 +305,31 @@
 
         function processStationData(data) {
             const dailyRainfall = {};
+            const dateToTimestamp = {};
             data.forEach(item => {
-                const date = new Date(item.dateTime).toLocaleDateString();
+                const dateObj = new Date(item.dateTime);
+                const dateKey = dateObj.toLocaleDateString();
                 const value = parseFloat(item.value);
-                if (!dailyRainfall[date]) {
-                    dailyRainfall[date] = 0;
+                if (!dailyRainfall[dateKey]) {
+                    dailyRainfall[dateKey] = 0;
+                    dateToTimestamp[dateKey] = dateObj.getTime();
                 }
-                dailyRainfall[date] += value;
+                dailyRainfall[dateKey] += value;
             });
-            return Object.entries(dailyRainfall).map(([date, value]) => ({ date, value: value.toFixed(2) }));
+            // Sort by actual date values - oldest to newest (latest on right)
+            return Object.entries(dailyRainfall)
+                .sort((a, b) => {
+                    const dateA = new Date(a[0]);
+                    const dateB = new Date(b[0]);
+                    return dateA - dateB;
+                })
+                .map(([date, value]) => {
+                    // Format date as MMM DD (e.g., "Jan 15")
+                    const dateObj = new Date(date);
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const formattedDate = `${monthNames[dateObj.getMonth()]} ${dateObj.getDate()}`;
+                    return { date: formattedDate, value: value.toFixed(2) };
+                });
         }
 
         async function updateStationChart(stationReference) {
@@ -279,7 +398,19 @@
     // Initial data fetch
     updateRainfallData();
         // Map script
-        const map = L.map('map');
+        // Define UK boundaries
+        const ukBounds = L.latLngBounds(
+            L.latLng(49.5, -8.5),  // Southwest corner (includes Ireland for better view)
+            L.latLng(61.0, 2.0)    // Northeast corner (includes Scotland and east coast)
+        );
+        
+        const map = L.map('map', {
+            maxBounds: ukBounds,
+            maxBoundsViscosity: 1.0,  // How strongly to snap back when dragged outside bounds
+            minZoom: 6,                // Prevent zooming out too far
+            maxZoom: 18                // Allow detailed zoom
+        });
+        
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
@@ -353,26 +484,28 @@
         }
 
         function initializeMap() {
-        const defaultLat = 50.691845;
-        const defaultLong = -1.308358;
+            // Center of UK for full view
+            const ukCenterLat = 54.5;
+            const ukCenterLong = -2.0;
 
-            // Set initial view
-            map.setView([defaultLat, defaultLong], 10);
+            // Set initial view to show full UK
+            map.setView([ukCenterLat, ukCenterLong], 6);
 
-        // Add a marker for the default location
-        searchLocation = L.marker([defaultLat, defaultLong], {icon: greenIcon}).addTo(map).bindPopup('Default Search Location');
+            // Hide loading screen when map is ready
+            document.getElementById('map-loading').style.display = 'none';
 
-        // Hide loading screen when map is ready
-        document.getElementById('map-loading').style.display = 'none';
-
-        // Add click event to the map
-        map.on('click', function(e) {
-                
+            // Add click event to the map
+            map.on('click', function(e) {
                 const clickedLat = e.latlng.lat;
                 const clickedLng = e.latlng.lng;
                 
-                // Move the search location marker
-                searchLocation.setLatLng([clickedLat, clickedLng]);
+                // Create search location marker if it doesn't exist
+                if (!searchLocation) {
+                    searchLocation = L.marker([clickedLat, clickedLng], {icon: greenIcon}).addTo(map);
+                } else {
+                    // Move the search location marker
+                    searchLocation.setLatLng([clickedLat, clickedLng]);
+                }
                 
                 // Update the search location popup
                 searchLocation.setPopupContent(`Search Location<br>Lat: ${clickedLat.toFixed(4)}, Lng: ${clickedLng.toFixed(4)}`);
@@ -380,11 +513,20 @@
 
                 // Trigger search with new location
                 fetchStations(clickedLat, clickedLng);
-
             });
 
-            // Initial fetch
-            fetchStations(defaultLat, defaultLong);
+            // Immediately ask for user location on page load
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        updateMapToUserLocation(position);
+                    },
+                    function(error) {
+                        // If location denied or unavailable, just show UK map
+                        console.log('Location access denied or unavailable');
+                    }
+                );
+            }
         }
 
         function getLocation() {
@@ -460,6 +602,70 @@
         document.getElementById('map-loading').style.display = 'flex';
         // Initialize the map
         initializeMap();
+        
+        // First-time user tooltips
+        function showFirstTimeTooltips() {
+            // Check if tooltips have been shown before
+            if (localStorage.getItem('tooltipsShown') === 'true') {
+                return;
+            }
+            
+            // Show tooltips with delays
+            setTimeout(() => {
+                const chartTooltip = document.getElementById('tooltip-chart');
+                if (chartTooltip) {
+                    // Position chart tooltip relative to canvas
+                    const canvas = document.getElementById('rainfallChart');
+                    const rect = canvas.getBoundingClientRect();
+                    chartTooltip.style.position = 'fixed';
+                    chartTooltip.style.top = (rect.top + rect.height / 2) + 'px';
+                    chartTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                    chartTooltip.style.transform = 'translate(-50%, -50%)';
+                    chartTooltip.classList.add('show');
+                }
+            }, 1000);
+            
+            setTimeout(() => {
+                const markerTooltip = document.getElementById('tooltip-marker');
+                if (markerTooltip) {
+                    markerTooltip.classList.add('show');
+                }
+            }, 2500);
+            
+            setTimeout(() => {
+                const mapTooltip = document.getElementById('tooltip-map');
+                if (mapTooltip) {
+                    mapTooltip.classList.add('show');
+                }
+            }, 4000);
+            
+            // Auto-hide tooltips after 8 seconds
+            setTimeout(() => {
+                hideTooltips();
+            }, 8000);
+            
+            // Mark tooltips as shown
+            localStorage.setItem('tooltipsShown', 'true');
+        }
+        
+        function hideTooltips() {
+            const tooltips = document.querySelectorAll('.tooltip-overlay');
+            tooltips.forEach(tooltip => {
+                tooltip.classList.remove('show');
+            });
+        }
+        
+        // Show tooltips when page loads
+        window.addEventListener('load', () => {
+            setTimeout(showFirstTimeTooltips, 500);
+        });
+        
+        // Optional: Add click to dismiss functionality
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.tooltip-overlay')) {
+                hideTooltips();
+            }
+        });
     </script>
 </body>
 </html>
