@@ -1100,11 +1100,27 @@
             const savedStation = getSavedStation();
             
             if (savedStation) {
-                console.log('Loading saved station:', savedStation.label);
-                currentStation = savedStation.stationReference;
-                document.getElementById('current-station').textContent = savedStation.label + ' (Saved)';
-                document.getElementById('station-details').textContent = `Station ID: ${savedStation.stationReference}`;
-                await updateRainfallData();
+                console.log('Loading saved location for nearest station search:', savedStation.label);
+
+                // Set or update the search location to the saved station location
+                try {
+                    if (!searchLocation) {
+                        searchLocation = L.marker([savedStation.lat, savedStation.long], { icon: greenIcon })
+                            .addTo(map)
+                            .bindPopup('Search Location (Saved)');
+                    } else {
+                        searchLocation.setLatLng([savedStation.lat, savedStation.long]);
+                        searchLocation.setPopupContent('Search Location (Saved)');
+                    }
+
+                    // Center map around saved location
+                    map.setView([savedStation.lat, savedStation.long], 12);
+                } catch (e) {
+                    console.warn('Could not render saved search location:', e);
+                }
+
+                // Fetch stations near saved location and auto-select the closest
+                await fetchStations(savedStation.lat, savedStation.long, true);
                 hasLoadedInitialData = true;
             } else {
                 console.log('No saved station, waiting for user location or manual selection');
