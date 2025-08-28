@@ -9,222 +9,808 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
     <style>
+        :root {
+            /* Light theme colors */
+            --primary-color: #2563eb;
+            --primary-light: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #06b6d4;
+            --accent-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --surface: #ffffff;
+            --surface-hover: #f8fafc;
+            
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            
+            --border-color: #e2e8f0;
+            --border-light: #f1f5f9;
+            
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            
+            --radius-sm: 0.375rem;
+            --radius: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            
+            --transition: all 0.2s ease-in-out;
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            
+            --border-color: #334155;
+            --border-light: #475569;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: var(--transition);
         }
-        h1, h2 {
-            text-align: center;
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
         }
-        .container {
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
             display: flex;
-            flex-wrap: wrap;
             justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
+        
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .theme-toggle {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--surface-hover);
+            transform: translateY(-1px);
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-title {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .card-icon {
+            font-size: 1.5rem;
+        }
+        
         .left-column, .right-column {
             width: 100%;
         }
         #map {
             width: 100%;
             height: 400px;
-            margin: 20px 0;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow);
         }
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+        }
+        
         table {
             border-collapse: collapse;
             width: 100%;
-            margin: 20px 0;
+            margin: 0;
         }
+        
         th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            padding: 0.75rem 1rem;
             text-align: left;
+            border-bottom: 1px solid var(--border-light);
         }
+        
         th {
-            background-color: #f2f2f2;
-            font-weight: bold;
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
+        
+        tr:hover {
+            background: var(--surface-hover);
+        }
+        
+        td {
+            color: var(--text-secondary);
         }
         .search-controls {
-            margin: 20px 0;
             display: flex;
-            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1rem;
             align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
         }
-        .search-controls select {
-            width: 120px;
-            margin-right: 10px;
+        
+        @media screen and (max-width: 640px) {
+            .search-controls {
+                flex-direction: column;
+                gap: 1.5rem;
+                padding: 1rem;
+            }
         }
-        #days-input {
-            width: 100px;
-            margin-right: 10px;
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: center;
+            min-width: 140px;
         }
-        button {
-            padding: 5px 10px;
+        
+        .control-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
         }
-        #instructions {
+        
+        select, input[type="text"], input[type="number"] {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-family: inherit;
+            transition: var(--transition);
+            min-width: 140px;
+            font-size: 0.95rem;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .btn-location {
+            position: relative;
+            overflow: hidden;
+            min-width: 160px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.95rem;
+        }
+        
+        .btn-location:hover:not(:disabled) {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-location:active {
+            transform: translateY(-1px) scale(0.98);
+        }
+        
+        .btn-location .btn-icon {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            margin-right: 0.5rem;
+            font-size: 1.1em;
+        }
+        
+        .btn-location .btn-text {
+            display: inline-block;
+        }
+        
+        .btn-location .loading-spinner {
+            margin-right: 0.5rem;
+            font-size: 1.1em;
+        }
+        
+        .btn-location:hover:not(:disabled) .btn-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+        
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .btn-location:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .btn-location:disabled .btn-icon {
+            transform: none !important;
+        }
+        
+        .btn-location::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn-location:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .location-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            min-height: 1.25rem;
             text-align: center;
-            margin-bottom: 10px;
+        }
+        
+        .location-success {
+            color: var(--success-color);
+        }
+        
+        .location-error {
+            color: var(--error-color);
+        }
+        
+        .location-searching {
+            color: var(--primary-color);
+        }
+        
+        .location-suggestion {
+            color: var(--text-secondary);
             font-style: italic;
         }
-        #rainfall-container {
-            margin-bottom: 20px;
+        
+        .btn-location.searching {
+            animation: pulse 2s infinite;
         }
-        #toggleTableBtn {
-            display: block;
-            margin: 20px auto;
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+            }
+        }
+        
+        .location-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 160px;
+        }
+        
+        .location-controls .btn-location {
+            width: 100%;
+            justify-content: center;
+            font-weight: 600;
+            letter-spacing: 0.025em;
+        }
+        
+        .location-status {
+            width: 100%;
+            text-align: center;
+            word-wrap: break-word;
+            max-width: 280px;
+        }
+        
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--surface-hover);
+            transform: translateY(-1px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .instructions {
+            text-align: center;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            font-style: italic;
+            border-left: 4px solid var(--primary-color);
+            transition: opacity 0.3s ease;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0.5rem 0 0 0;
+            font-weight: 500;
+        }
+        
+        #rainfall-container {
+            margin-bottom: 1.5rem;
+        }
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1.5rem 0;
         }
         
         @media screen and (min-width: 768px) {
-            .left-column {
-                width: 60%;
-            }
-            .right-column {
-                width: 38%;
+            .container {
+                grid-template-columns: 1fr 1fr;
             }
         }
-        .slider-container {
-        display: flex;
-        align-items: center;
-        margin-top: 20px;
-    }
-
-    #days-slider {
-        flex-grow: 1;
-        margin-right: 10px;
-    }
-
-    #days-value {
-        font-weight: bold;
-        margin-right: 5px;
-    }
-
-    #update-button {
-        margin-left: 10px;
-    }
-    #map-container {
-        position: relative;
-        width: 100%;
-        height: 400px;
-        margin: 20px 0;
-    }
-
-    #map {
-        width: 100%;
-        height: 100%;
-    }
-
-    #map-loading {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(255, 255, 255, 0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 1.2em;
-        z-index: 1000;
-    }
+        
+        @media screen and (min-width: 1024px) {
+            .container {
+                grid-template-columns: 1.2fr 0.8fr;
+            }
+        }
+        
+        @media screen and (max-width: 768px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .header-content {
+                justify-content: center;
+                text-align: center;
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+            
+            
+            .card {
+                padding: 1rem;
+            }
+            
+            #map {
+                height: 300px;
+            }
+        }
+        #map-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .loading-skeleton {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            z-index: 1000;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
     
-    /* First-time user tooltips */
-    .tooltip-overlay {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.85);
-        color: white;
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 14px;
-        z-index: 2000;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        max-width: 280px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
+        .tooltip-overlay {
+            position: absolute;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            z-index: 2000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            max-width: 280px;
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(10px);
+        }
     
-    .tooltip-overlay.show {
-        opacity: 1;
-    }
-    
-    .tooltip-overlay::after {
-        content: '';
-        position: absolute;
-        width: 0;
-        height: 0;
-        border-style: solid;
-    }
-    
-    .tooltip-marker {
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -100%);
-        margin-top: -10px;
-    }
-    
-    .tooltip-marker::after {
-        top: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        border-width: 8px 8px 0 8px;
-        border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
-    }
-    
-    .tooltip-map {
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-    
-    .tooltip-map::after {
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        border-width: 0 8px 8px 8px;
-        border-color: transparent transparent rgba(0, 0, 0, 0.85) transparent;
-    }
-    
-    .tooltip-chart {
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
-    
-    .tooltip-dismiss {
-        display: inline-block;
-        margin-top: 8px;
-        padding: 4px 8px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
-        pointer-events: auto;
-    }
-    
-    .tooltip-dismiss:hover {
-        background: rgba(255, 255, 255, 0.3);
-    }
-</style>
+        .tooltip-overlay.show {
+            opacity: 1;
+        }
+        
+        .tooltip-overlay::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        
+        .tooltip-marker {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+        }
+        
+        .tooltip-marker::after {
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px 8px 0 8px;
+            border-color: var(--text-primary) transparent transparent transparent;
+        }
+        
+        .tooltip-map {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .tooltip-map::after {
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 0 8px 8px 8px;
+            border-color: transparent transparent var(--text-primary) transparent;
+        }
+        
+        .tooltip-chart {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .tooltip-dismiss {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: var(--transition);
+        }
+        
+        .tooltip-dismiss:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .comparison-mode {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .comparison-stations {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .station-tag {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .station-remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .search-box {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+        
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .search-result {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+        
+        .search-result:hover {
+            background: var(--surface-hover);
+        }
+        
+        .search-result:last-child {
+            border-bottom: none;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        @media screen and (max-width: 640px) {
+            .main-container {
+                padding: 0 0.5rem;
+            }
+            
+            .card {
+                padding: 1rem;
+                border-radius: var(--radius-lg);
+            }
+            
+            .search-controls {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            select, input {
+                width: 100%;
+            }
+            
+            .location-controls {
+                width: 100%;
+            }
+            
+            .btn-location {
+                min-width: 200px;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.25rem;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Rainfall Data and Station Locations</h1>
-    <div class="container">
+    <header class="header">
+        <div class="header-content">
+            <h1>☔ Rainfall Data and Station Locations</h1>
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark/light mode">
+                <span id="theme-icon">🌙</span>
+                <span id="theme-text">Dark</span>
+            </button>
+        </div>
+    </header>
+    
+    <div class="main-container">
+        <div class="container">
         <div class="left-column">
             <h2>Rainfall Data</h2>
             <div id="rainfall-container"></div>
             <canvas id="rainfallChart"></canvas>
             <div id="tooltip-chart" class="tooltip-overlay tooltip-chart">
                 📈 Hover over chart bars to see exact rainfall values for each day
-            </div>
-            <div class="slider-container">
-                <input type="range" id="days-slider" min="1" max="30" value="30" step="1">
-                <span id="days-value">30</span> days
-                <!-- Removed the update button -->
             </div>
         </div>
         <div class="right-column">
@@ -233,16 +819,22 @@
                 <div>
                     <label for="distance">Distance (km):</label>
                     <select id="distance">
-                        <option value="10" selected>10</option>
-                        <option value="20">20</option>
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
                 </div>
-                <button id="nearMeBtn">Locations near me</button>
+                    <div class="location-controls">
+                        <button class="btn btn-primary btn-location" id="nearMeBtn" type="button" aria-label="Find stations near your location">
+                            <span class="btn-icon" id="location-icon">📍</span>
+                            <span class="btn-text" id="location-text">Find Near Me</span>
+                            <span class="loading-spinner" id="location-spinner" style="display: none;">🔄</span>
+                        </button>
+                        <div class="location-status" id="location-status" role="status" aria-live="polite"></div>
+                    </div>
             </div>
 
-            <p id="instructions">Click on the map to set a custom search location</p>
             <div id="map-container">
                 <div id="map"></div>
                 <div id="map-loading">Loading map...</div>
@@ -377,15 +969,11 @@
                 }
             });
         }
-        const daysSlider = document.getElementById('days-slider');
-    const daysValue = document.getElementById('days-value');
-    daysSlider.addEventListener('input', function() {
-        daysValue.textContent = this.value;
-        updateRainfallData(); // Add this line to update data when slider changes
-    });
+        // Fixed to 30 days
+        const FIXED_DAYS = 30;
 
     async function updateRainfallData() {
-        const days = parseInt(daysSlider.value);
+        const days = FIXED_DAYS;
         const defaultStationId = 'E7050';
         const rawData = await fetchRainfallData(days);
         const processedData = processRainfallData(rawData);
@@ -530,42 +1118,203 @@
         }
 
         function getLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(updateMapToUserLocation, showError);
-        } else {
-            alert("Geolocation is not supported by this browser.");
+            if (!navigator.geolocation) {
+                showLocationStatus('❌ Geolocation not supported', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('nearMeBtn');
+            const icon = document.getElementById('location-icon');
+            const text = document.getElementById('location-text');
+            const spinner = document.getElementById('location-spinner');
+            
+            // Check if elements exist (they might not if the old HTML structure is still there)
+            if (!icon || !text || !spinner) {
+                // Fallback to old method
+                btn.disabled = true;
+                btn.innerHTML = '🔄 Finding location...';
+            } else {
+                // Start loading state
+                btn.disabled = true;
+                icon.style.display = 'none';
+                spinner.style.display = 'inline-block';
+                text.textContent = 'Finding location...';
+                btn.classList.add('searching');
+            }
+            
+            showLocationStatus('🔍 Searching for your location...', 'searching');
+            
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 300000 // 5 minutes
+            };
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // Success state
+                    resetLocationButton();
+                    updateMapToUserLocation(position);
+                    
+                    const accuracy = Math.round(position.coords.accuracy);
+                    showLocationStatus(
+                        `✅ Location found (±${accuracy}m accuracy)`, 
+                        'success'
+                    );
+                    
+                    // Auto-hide success message after 3 seconds
+                    setTimeout(() => {
+                        showLocationStatus('');
+                    }, 3000);
+                },
+                (error) => {
+                    // Error state
+                    resetLocationButton();
+                    handleLocationError(error);
+                },
+                options
+            );
         }
-    }
-
-    function getLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(updateMapToUserLocation, showError);
-        } else {
-            alert("Geolocation is not supported by this browser.");
+        
+        function resetLocationButton() {
+            const btn = document.getElementById('nearMeBtn');
+            const icon = document.getElementById('location-icon');
+            const text = document.getElementById('location-text');
+            const spinner = document.getElementById('location-spinner');
+            
+            btn.disabled = false;
+            btn.classList.remove('searching');
+            
+            // Check if elements exist (fallback for old structure)
+            if (!icon || !text || !spinner) {
+                btn.innerHTML = '📍 Find Near Me';
+            } else {
+                icon.style.display = 'inline-block';
+                spinner.style.display = 'none';
+                text.textContent = 'Find Near Me';
+            }
         }
-    }
-
-    function updateMapToUserLocation(position) {
-        const lat = position.coords.latitude;
-        const long = position.coords.longitude;
-
-        // Update map view
-        map.setView([lat, long], 10);
-
-        // Update search location marker
-        searchLocation.setLatLng([lat, long]);
-        searchLocation.setPopupContent('Your Location');
-        searchLocation.openPopup();
-           // Add or update user location marker
-        if (userLocation) {
-            userLocation.setLatLng([lat, long]);
-        } else {
-            userLocation = L.marker([lat, long], {icon: blueIcon}).addTo(map).bindPopup('Your Location');
+        
+        function handleLocationError(error) {
+            let message = '';
+            let suggestion = '';
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = '❌ Location access denied';
+                    suggestion = 'Please enable location access in your browser settings';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = '❌ Location unavailable';
+                    suggestion = 'Please check your GPS/network connection';
+                    break;
+                case error.TIMEOUT:
+                    message = '⏰ Location request timed out';
+                    suggestion = 'Please try again or check your connection';
+                    break;
+                default:
+                    message = '❌ Location error occurred';
+                    suggestion = 'Please try clicking on the map instead';
+                    break;
+            }
+            
+            showLocationStatus(message, 'error');
+            
+            // Show suggestion after a delay
+            setTimeout(() => {
+                if (suggestion) {
+                    showLocationStatus(suggestion, 'suggestion');
+                }
+            }, 2000);
+            
+            // Clear after 5 seconds
+            setTimeout(() => {
+                showLocationStatus('');
+            }, 7000);
+        }
+        
+        function showLocationStatus(message, type = '') {
+            const statusDiv = document.getElementById('location-status');
+            if (statusDiv) {
+                statusDiv.textContent = message;
+                statusDiv.className = `location-status ${type ? `location-${type}` : ''}`;
+            }
         }
 
-        // Fetch stations for the new location
-        fetchStations(lat, long);
-    }
+        function updateMapToUserLocation(position) {
+            const lat = position.coords.latitude;
+            const long = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            const timestamp = new Date(position.timestamp);
+
+            // Smooth map transition
+            map.flyTo([lat, long], 12, {
+                animate: true,
+                duration: 1.5
+            });
+
+            // Add accuracy circle
+            if (window.accuracyCircle) {
+                map.removeLayer(window.accuracyCircle);
+            }
+            
+            window.accuracyCircle = L.circle([lat, long], {
+                radius: accuracy,
+                color: '#2563eb',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.1,
+                weight: 2,
+                opacity: 0.5
+            }).addTo(map);
+
+            // Add or update user location marker with enhanced popup
+            const popupContent = `
+                <div style="text-align: center; min-width: 200px;">
+                    <h4 style="margin: 0 0 8px 0; color: #2563eb;">📍 Your Location</h4>
+                    <div style="margin: 8px 0; padding: 8px; background: #f8fafc; border-radius: 6px;">
+                        <div style="margin: 4px 0;"><strong>Accuracy:</strong> ±${Math.round(accuracy)}m</div>
+                        <div style="margin: 4px 0;"><strong>Coordinates:</strong></div>
+                        <div style="font-family: monospace; font-size: 0.85em; color: #64748b;">
+                            ${lat.toFixed(6)}, ${long.toFixed(6)}
+                        </div>
+                        <div style="margin: 4px 0; font-size: 0.85em; color: #64748b;">
+                            Updated: ${timestamp.toLocaleTimeString()}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (userLocation) {
+                userLocation.setLatLng([lat, long]);
+                userLocation.setPopupContent(popupContent);
+            } else {
+                userLocation = L.marker([lat, long], {icon: blueIcon})
+                    .addTo(map)
+                    .bindPopup(popupContent);
+            }
+
+            // Create/update search location marker
+            if (!searchLocation) {
+                searchLocation = L.marker([lat, long], {icon: greenIcon}).addTo(map);
+            } else {
+                searchLocation.setLatLng([lat, long]);
+            }
+            
+            searchLocation.setPopupContent(`
+                <div style="text-align: center;">
+                    <strong>🎯 Search Center</strong><br>
+                    <small>Finding stations within ${document.getElementById('distance').value}km</small>
+                </div>
+            `);
+            
+            // Brief popup to show location found
+            userLocation.openPopup();
+            setTimeout(() => {
+                userLocation.closePopup();
+            }, 2000);
+
+            fetchStations(lat, long);
+        }
 
         function showError(error) {
             switch(error.code) {
@@ -598,6 +1347,9 @@
             fetchStations(latlng.lat, latlng.lng);
         });
 
+        document.getElementById('nearMeBtn').addEventListener('click', getLocation);
+        
+        // Simple single click handler
         document.getElementById('nearMeBtn').addEventListener('click', getLocation);
         document.getElementById('map-loading').style.display = 'flex';
         // Initialize the map
@@ -660,12 +1412,52 @@
             setTimeout(showFirstTimeTooltips, 500);
         });
         
-        // Optional: Add click to dismiss functionality
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'l':
+                        e.preventDefault();
+                        getLocation();
+                        break;
+                    case 'f':
+                        e.preventDefault();
+                        const searchInput = document.getElementById('station-search');
+                        if (searchInput) searchInput.focus();
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        exportToCSV();
+                        break;
+                }
+            }
+            if (e.key === 'Escape') {
+                const searchResults = document.getElementById('search-results');
+                if (searchResults) searchResults.style.display = 'none';
+                hideTooltips();
+            }
+        });
+        
+        // Click to dismiss functionality
         document.addEventListener('click', (e) => {
             if (e.target.closest('.tooltip-overlay')) {
                 hideTooltips();
             }
         });
+        
+        
+        // Service worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
     </script>
 </body>
 </html>
