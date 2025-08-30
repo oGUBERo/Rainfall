@@ -462,6 +462,22 @@
                 </div>
                 
                 
+                <div class="legend">
+                    <div class="legend-title">Map Legend</div>
+                    <div class="legend-item">
+                        <div class="legend-icon green"></div>
+                        <span>Search Location</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon red"></div>
+                        <span>Rainfall Station</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon yellow"></div>
+                        <span>Selected Station</span>
+                    </div>
+                </div>
+
                 <div class="error-message" id="chart-error">
                     <strong>Error loading data</strong>
                     <p id="chart-error-text"></p>
@@ -486,7 +502,6 @@
                             <option value="100">100 km</option>
                         </select>
                     </div>
-                    <button id="nearMeBtn">📍 Find Near Me</button>
                 </div>
                 
                 <div id="map-container">
@@ -504,25 +519,6 @@
                     No stations found in this area. Try increasing the search radius or clicking a different location.
                 </div>
                 
-                <div class="legend">
-                    <div class="legend-title">Map Legend</div>
-                    <div class="legend-item">
-                        <div class="legend-icon green"></div>
-                        <span>Search Location</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-icon red"></div>
-                        <span>Rainfall Station</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-icon yellow"></div>
-                        <span>Selected Station</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-icon blue"></div>
-                        <span>Your Location</span>
-                    </div>
-                </div>
                 
                 <div class="error-message" id="map-error">
                     <strong>Error loading stations</strong>
@@ -713,7 +709,6 @@
         function setupEventListeners() {
             
             // Buttons
-            document.getElementById('nearMeBtn').addEventListener('click', getLocation);
             document.getElementById('resetViewBtn').addEventListener('click', resetMapView);
             document.getElementById('distance').addEventListener('change', function() {
                 if (searchLocation) {
@@ -923,13 +918,16 @@
                             .addTo(map)
                             .bindPopup(`<strong>${station.label}</strong><br>ID: ${station.stationReference}${isClosest ? '<br><em>Closest station (' + closestResult.distance.toFixed(1) + ' km)</em>' : ''}`);
                         
+                        // Store station data with the marker for easy access
+                        marker.stationData = station;
+                        
                         marker.on('click', function() {
                             selectStation(station, marker);
                         });
                         
                         markers.push(marker);
                         
-                        // Auto-select closest station
+                        // Auto-select closest station immediately after creating it
                         if (isClosest) {
                             selectedMarker = marker;
                             selectStation(station, marker);
@@ -986,8 +984,7 @@
             fetchStations(lat, lng, true);
         }
         
-        // Get user location
-        function getLocation() {
+        // Get user location - removed
             if (navigator.geolocation) {
                 // Show loading while getting location
                 document.getElementById('map-loading').classList.remove('hide');
@@ -1028,7 +1025,6 @@
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             
-            console.log('User location found:', lat, lng);
             
             // Update map view with animation
             map.flyTo([lat, lng], 12, {
@@ -1047,15 +1043,8 @@
                     .openPopup();
             }
             
-            // Update search location marker
-            if (!searchLocation) {
-                searchLocation = L.marker([lat, lng], {icon: greenIcon})
-                    .addTo(map)
-                    .bindPopup('Search Location (Your Location)');
-            } else {
-                searchLocation.setLatLng([lat, lng]);
-                searchLocation.setPopupContent('Search Location (Your Location)');
-            }
+            // Don't create a separate search location marker when using user's location
+            // The blue user location marker is sufficient
             
             // Fetch stations near user location and auto-select closest
             fetchStations(lat, lng, true);
@@ -1063,16 +1052,19 @@
         
         // Show location error
         function showLocationError(error) {
-            let message = "Unable to get your location.";
+            let message = "";
             switch(error.code) {
                 case error.PERMISSION_DENIED:
-                    message = "Location access denied. Please enable location services.";
+                    message = "Location access denied.\n\nTo fix this:\n• Click the location icon in your browser's address bar\n• Select 'Allow' for location access\n• Refresh the page and try again";
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    message = "Location information is unavailable.";
+                    message = "Location unavailable.\n\nTry these solutions:\n• Check that Location Services are enabled on your device\n• Make sure you have internet connection\n• Try refreshing the page\n• If using a desktop, try a different browser\n• You can also click anywhere on the map to search for stations";
                     break;
                 case error.TIMEOUT:
-                    message = "Location request timed out.";
+                    message = "Location request timed out.\n\nPlease:\n• Try again in a moment\n• Check your internet connection\n• Or click anywhere on the map to search manually";
+                    break;
+                default:
+                    message = "Location error occurred.\n\nYou can still use the app by clicking anywhere on the map to search for rainfall stations.";
                     break;
             }
             alert(message);
@@ -1100,7 +1092,6 @@
             const savedStation = getSavedStation();
             
             if (savedStation) {
-                console.log('Loading saved location for nearest station search:', savedStation.label);
 
                 // Set or update the search location to the saved station location
                 try {
@@ -1139,7 +1130,6 @@
                 savedAt: new Date().toISOString()
             };
             localStorage.setItem('selectedStation', JSON.stringify(stationData));
-            console.log('Station saved to localStorage:', stationData.label);
         }
         
         // Get saved station from localStorage
@@ -1170,7 +1160,7 @@
         // Show standby message
         function showStandbyMessage() {
             document.getElementById('current-station').textContent = 'No Station Selected';
-            document.getElementById('station-details').innerHTML = 'Click "Find Near Me" or select a location on the map to view rainfall data';
+            document.getElementById('station-details').innerHTML = 'Click anywhere on the map to find nearby rainfall stations and view their data';
         }
         
         // Fallback to UK center station when no location permission

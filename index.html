@@ -790,6 +790,46 @@
                 justify-content: center;
             }
         }
+
+        /* Legend styles */
+        .legend {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        
+        .legend-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        
+        .legend-icon.green { background: #10b981; }
+        .legend-icon.red { background: #ef4444; }
+        .legend-icon.blue { background: #3b82f6; }
+        .legend-icon.yellow { background: #f59e0b; }
+        
+        .legend-item span {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -809,6 +849,23 @@
             <h2>Rainfall Data</h2>
             <div id="rainfall-container"></div>
             <canvas id="rainfallChart"></canvas>
+            
+            <div class="legend">
+                <div class="legend-title">Map Legend</div>
+                <div class="legend-item">
+                    <div class="legend-icon green"></div>
+                    <span>Search Location</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon red"></div>
+                    <span>Rainfall Station</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon yellow"></div>
+                    <span>Selected Station</span>
+                </div>
+            </div>
+            
             <div id="tooltip-chart" class="tooltip-overlay tooltip-chart">
                 📈 Hover over chart bars to see exact rainfall values for each day
             </div>
@@ -825,14 +882,6 @@
                         <option value="100">100</option>
                     </select>
                 </div>
-                    <div class="location-controls">
-                        <button class="btn btn-primary btn-location" id="nearMeBtn" type="button" aria-label="Find stations near your location">
-                            <span class="btn-icon" id="location-icon">📍</span>
-                            <span class="btn-text" id="location-text">Find Near Me</span>
-                            <span class="loading-spinner" id="location-spinner" style="display: none;">🔄</span>
-                        </button>
-                        <div class="location-status" id="location-status" role="status" aria-live="polite"></div>
-                    </div>
             </div>
 
             <div id="map-container">
@@ -850,6 +899,7 @@
 
     <script>
         // Rainfall data script
+        const FIXED_DAYS = 30; // Fixed to 30 days
         const rainfallContainer = document.getElementById('rainfall-container');
         const ctx = document.getElementById('rainfallChart').getContext('2d');
         let chart;
@@ -925,13 +975,17 @@
         }
 
         async function updateStationChart(stationReference) {
-            const days = parseInt(daysSlider.value);
-            const rawData = await fetchStationData(stationReference, days);
-            const processedData = processStationData(rawData);
-            createChart(processedData, `Rainfall at Station ${stationReference}`);
+            try {
+                const days = FIXED_DAYS; // Use the fixed 30 days constant
+                const rawData = await fetchStationData(stationReference, days);
+                const processedData = processStationData(rawData);
+                createChart(processedData, `Rainfall at Station ${stationReference}`);
 
-            const totalRainfall = processedData.reduce((sum, item) => sum + parseFloat(item.value), 0).toFixed(2);
-            rainfallContainer.innerHTML = `<p>Total rainfall at Station ${stationReference} for the last ${days} days: ${totalRainfall} mm</p>`;
+                const totalRainfall = processedData.reduce((sum, item) => sum + parseFloat(item.value), 0).toFixed(2);
+                rainfallContainer.innerHTML = `<p>Total rainfall at Station ${stationReference} for the last ${days} days: ${totalRainfall} mm</p>`;
+            } catch (error) {
+                console.error('Error in updateStationChart:', error);
+            }
         }
         function createChart(data, label = 'Daily Rainfall (mm)') {
             if (chart) {
@@ -969,8 +1023,6 @@
                 }
             });
         }
-        // Fixed to 30 days
-        const FIXED_DAYS = 30;
 
     async function updateRainfallData() {
         const days = FIXED_DAYS;
@@ -983,8 +1035,28 @@
         rainfallContainer.innerHTML = `<p>Total rainfall at Station ${defaultStationId} for the last ${days} days: ${totalRainfall} mm</p>`;
     }
 
-    // Initial data fetch
-    updateRainfallData();
+    // Show placeholder content
+    function showPlaceholder() {
+        rainfallContainer.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #6b7280;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                <h3 style="margin: 0 0 12px 0; color: #374151;">No Station Selected</h3>
+                <p style="margin: 0; line-height: 1.5;">
+                    Click anywhere on the map to find nearby rainfall stations<br>
+                    and view their data here.
+                </p>
+            </div>
+        `;
+        
+        // Clear any existing chart
+        if (chart) {
+            chart.destroy();
+            chart = null;
+        }
+    }
+
+    // Show placeholder until user selects a station
+    showPlaceholder();
         // Map script
         // Define UK boundaries
         const ukBounds = L.latLngBounds(
@@ -1035,7 +1107,44 @@
             shadowSize: [41, 41]
         });
 
-        function fetchStations(lat, long) {
+        const yellowIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // Calculate distance between two points (Haversine formula)
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Find closest station to given coordinates
+        function findClosestStation(lat, lng, stations) {
+            let minDistance = Infinity;
+            let closestStation = null;
+            
+            for (let i = 0; i < stations.length; i++) {
+                const distance = calculateDistance(lat, lng, stations[i].lat, stations[i].long);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestStation = stations[i];
+                }
+            }
+            
+            return { station: closestStation, distance: minDistance };
+        }
+
+        function fetchStations(lat, long, autoSelectClosest = false) {
             const dist = document.getElementById('distance').value;
 
             // Clear existing markers and table rows
@@ -1049,20 +1158,39 @@
                 .then(data => {
                     const stations = data.items;
 
+                    // Find closest station if requested
+                    let closestResult = null;
+                    if (autoSelectClosest && stations.length > 0) {
+                        closestResult = findClosestStation(lat, long, stations);
+                    }
+
                     stations.forEach(station => {
-                        // Add marker to the map
-                        const marker = L.marker([station.lat, station.long], {icon: redIcon})
+                        const isClosest = closestResult && station.stationReference === closestResult.station.stationReference;
+                        
+                        // Add marker to the map with appropriate color
+                        const marker = L.marker([station.lat, station.long], {
+                            icon: isClosest ? yellowIcon : redIcon
+                        })
                             .addTo(map)
-                            .bindPopup(station.label + ' (' + station.stationReference + ')');
+                            .bindPopup(station.label + ' (' + station.stationReference + ')' + 
+                                (isClosest ? '<br><em>Closest station (' + closestResult.distance.toFixed(1) + ' km)</em>' : ''));
                         
                         // Add click event to the marker
                         marker.on('click', function() {
                             updateStationChart(station.stationReference);
+                            saveSelectedStation(station);
                         });
                         
                         markers.push(marker);
 
-
+                        // Auto-select closest station
+                        if (isClosest) {
+                            // Add a small delay to ensure marker is fully rendered
+                            setTimeout(() => {
+                                updateStationChart(station.stationReference);
+                                saveSelectedStation(station);
+                            }, 100);
+                        }
                     });
 
                     // Center the map on the search location
@@ -1099,8 +1227,8 @@
                 searchLocation.setPopupContent(`Search Location<br>Lat: ${clickedLat.toFixed(4)}, Lng: ${clickedLng.toFixed(4)}`);
                 searchLocation.openPopup();
 
-                // Trigger search with new location
-                fetchStations(clickedLat, clickedLng);
+                // Trigger search with new location and auto-select closest
+                fetchStations(clickedLat, clickedLng, true);
             });
 
             // Immediately ask for user location on page load
@@ -1117,86 +1245,8 @@
             }
         }
 
-        function getLocation() {
-            if (!navigator.geolocation) {
-                showLocationStatus('❌ Geolocation not supported', 'error');
-                return;
-            }
-            
-            const btn = document.getElementById('nearMeBtn');
-            const icon = document.getElementById('location-icon');
-            const text = document.getElementById('location-text');
-            const spinner = document.getElementById('location-spinner');
-            
-            // Check if elements exist (they might not if the old HTML structure is still there)
-            if (!icon || !text || !spinner) {
-                // Fallback to old method
-                btn.disabled = true;
-                btn.innerHTML = '🔄 Finding location...';
-            } else {
-                // Start loading state
-                btn.disabled = true;
-                icon.style.display = 'none';
-                spinner.style.display = 'inline-block';
-                text.textContent = 'Finding location...';
-                btn.classList.add('searching');
-            }
-            
-            showLocationStatus('🔍 Searching for your location...', 'searching');
-            
-            const options = {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 300000 // 5 minutes
-            };
-            
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    // Success state
-                    resetLocationButton();
-                    updateMapToUserLocation(position);
-                    
-                    const accuracy = Math.round(position.coords.accuracy);
-                    showLocationStatus(
-                        `✅ Location found (±${accuracy}m accuracy)`, 
-                        'success'
-                    );
-                    
-                    // Auto-hide success message after 3 seconds
-                    setTimeout(() => {
-                        showLocationStatus('');
-                    }, 3000);
-                },
-                (error) => {
-                    // Error state
-                    resetLocationButton();
-                    handleLocationError(error);
-                },
-                options
-            );
-        }
         
-        function resetLocationButton() {
-            const btn = document.getElementById('nearMeBtn');
-            const icon = document.getElementById('location-icon');
-            const text = document.getElementById('location-text');
-            const spinner = document.getElementById('location-spinner');
-            
-            btn.disabled = false;
-            btn.classList.remove('searching');
-            
-            // Check if elements exist (fallback for old structure)
-            if (!icon || !text || !spinner) {
-                btn.innerHTML = '📍 Find Near Me';
-            } else {
-                icon.style.display = 'inline-block';
-                spinner.style.display = 'none';
-                text.textContent = 'Find Near Me';
-            }
-        }
-        
-        function handleLocationError(error) {
-            let message = '';
+        function updateMapToUserLocation(position) {
             let suggestion = '';
             
             switch(error.code) {
@@ -1293,19 +1343,8 @@
                     .bindPopup(popupContent);
             }
 
-            // Create/update search location marker
-            if (!searchLocation) {
-                searchLocation = L.marker([lat, long], {icon: greenIcon}).addTo(map);
-            } else {
-                searchLocation.setLatLng([lat, long]);
-            }
-            
-            searchLocation.setPopupContent(`
-                <div style="text-align: center;">
-                    <strong>🎯 Search Center</strong><br>
-                    <small>Finding stations within ${document.getElementById('distance').value}km</small>
-                </div>
-            `);
+            // Don't create a separate search location marker when using user's location
+            // The blue user location marker is sufficient
             
             // Brief popup to show location found
             userLocation.openPopup();
@@ -1347,13 +1386,74 @@
             fetchStations(latlng.lat, latlng.lng);
         });
 
-        document.getElementById('nearMeBtn').addEventListener('click', getLocation);
+        // Save selected station to localStorage
+        function saveSelectedStation(station) {
+            const stationData = {
+                stationReference: station.stationReference,
+                label: station.label,
+                lat: station.lat,
+                long: station.long,
+                savedAt: new Date().toISOString()
+            };
+            localStorage.setItem('selectedStation', JSON.stringify(stationData));
+        }
         
-        // Simple single click handler
-        document.getElementById('nearMeBtn').addEventListener('click', getLocation);
+        // Get saved station from localStorage
+        function getSavedStation() {
+            try {
+                const saved = localStorage.getItem('selectedStation');
+                if (saved) {
+                    const stationData = JSON.parse(saved);
+                    // Check if saved data is not too old (7 days)
+                    const savedDate = new Date(stationData.savedAt);
+                    const now = new Date();
+                    const daysDiff = (now - savedDate) / (1000 * 60 * 60 * 24);
+                    
+                    if (daysDiff <= 7) {
+                        return stationData;
+                    } else {
+                        // Remove old saved station
+                        localStorage.removeItem('selectedStation');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading saved station:', error);
+                localStorage.removeItem('selectedStation');
+            }
+            return null;
+        }
+
+        // Load saved station on page load
+        async function loadSavedStation() {
+            const savedStation = getSavedStation();
+            
+            if (savedStation) {
+                // Set search location to saved station location
+                if (!searchLocation) {
+                    searchLocation = L.marker([savedStation.lat, savedStation.long], {icon: greenIcon})
+                        .addTo(map)
+                        .bindPopup('Search Location (Saved)');
+                } else {
+                    searchLocation.setLatLng([savedStation.lat, savedStation.long]);
+                    searchLocation.setPopupContent('Search Location (Saved)');
+                }
+                
+                // Center map around saved location
+                map.setView([savedStation.lat, savedStation.long], 12);
+                
+                // Fetch stations and auto-select the saved one
+                fetchStations(savedStation.lat, savedStation.long, true);
+            }
+        }
+
         document.getElementById('map-loading').style.display = 'flex';
         // Initialize the map
         initializeMap();
+        
+        // Load saved station after map is initialized
+        setTimeout(() => {
+            loadSavedStation();
+        }, 500);
         
         // First-time user tooltips
         function showFirstTimeTooltips() {
