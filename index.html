@@ -915,7 +915,8 @@
             const dateToTimestamp = {};
             data.forEach(item => {
                 const dateObj = new Date(item.dateTime);
-                const dateKey = dateObj.toLocaleDateString();
+                // Use ISO date string for consistent cross-browser behavior
+                const dateKey = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD format
                 const value = parseFloat(item.value);
                 if (!dailyRainfall[dateKey]) {
                     dailyRainfall[dateKey] = 0;
@@ -923,16 +924,13 @@
                 }
                 dailyRainfall[dateKey] += value;
             });
-            // Sort by actual date values - oldest to newest (latest on right)
+            // Sort by timestamp instead of re-parsing date strings
             return Object.entries(dailyRainfall)
-                .sort((a, b) => {
-                    const dateA = new Date(a[0]);
-                    const dateB = new Date(b[0]);
-                    return dateA - dateB;
-                })
-                .map(([date, value]) => {
-                    // Format date as MMM DD (e.g., "Jan 15")
-                    const dateObj = new Date(date);
+                .sort((a, b) => dateToTimestamp[a[0]] - dateToTimestamp[b[0]])
+                .map(([dateKey, value]) => {
+                    // Parse the ISO date string reliably
+                    const [year, month, day] = dateKey.split('-').map(Number);
+                    const dateObj = new Date(year, month - 1, day); // month is 0-indexed
                     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                     const formattedDate = `${monthNames[dateObj.getMonth()]} ${dateObj.getDate()}`;
                     return { date: formattedDate, value: value.toFixed(2) };
@@ -950,7 +948,8 @@
             const dateToTimestamp = {};
             data.forEach(item => {
                 const dateObj = new Date(item.dateTime);
-                const dateKey = dateObj.toLocaleDateString();
+                // Use ISO date string for consistent cross-browser behavior
+                const dateKey = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD format
                 const value = parseFloat(item.value);
                 if (!dailyRainfall[dateKey]) {
                     dailyRainfall[dateKey] = 0;
@@ -958,16 +957,13 @@
                 }
                 dailyRainfall[dateKey] += value;
             });
-            // Sort by actual date values - oldest to newest (latest on right)
+            // Sort by timestamp instead of re-parsing date strings
             return Object.entries(dailyRainfall)
-                .sort((a, b) => {
-                    const dateA = new Date(a[0]);
-                    const dateB = new Date(b[0]);
-                    return dateA - dateB;
-                })
-                .map(([date, value]) => {
-                    // Format date as MMM DD (e.g., "Jan 15")
-                    const dateObj = new Date(date);
+                .sort((a, b) => dateToTimestamp[a[0]] - dateToTimestamp[b[0]])
+                .map(([dateKey, value]) => {
+                    // Parse the ISO date string reliably
+                    const [year, month, day] = dateKey.split('-').map(Number);
+                    const dateObj = new Date(year, month - 1, day); // month is 0-indexed
                     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                     const formattedDate = `${monthNames[dateObj.getMonth()]} ${dateObj.getDate()}`;
                     return { date: formattedDate, value: value.toFixed(2) };
@@ -1077,6 +1073,7 @@
 
         let markers = [];
         let searchLocation;
+        let selectedStationMarker = null;
 
         const redIcon = new L.Icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -1139,6 +1136,7 @@
             // Clear existing markers and table rows
             markers.forEach(marker => map.removeLayer(marker));
             markers = [];
+            selectedStationMarker = null;
             //document.querySelector('#stationTable tbody').innerHTML = '';
 
             // Fetch data from the API with user-defined parameters
@@ -1164,8 +1162,22 @@
                             .bindPopup(station.label + ' (' + station.stationReference + ')' + 
                                 (isClosest ? '<br><em>Closest station (' + closestResult.distance.toFixed(1) + ' km)</em>' : ''));
                         
+                        // Store station reference on marker for easy access
+                        marker.stationReference = station.stationReference;
+                        
                         // Add click event to the marker
                         marker.on('click', function() {
+                            // Reset all markers to red first
+                            markers.forEach(m => {
+                                if (m !== marker) {
+                                    m.setIcon(redIcon);
+                                }
+                            });
+                            
+                            // Set current marker to yellow and track it
+                            marker.setIcon(yellowIcon);
+                            selectedStationMarker = marker;
+                            
                             updateStationChart(station.stationReference);
                             saveSelectedStation(station);
                         });
@@ -1174,6 +1186,9 @@
 
                         // Auto-select closest station
                         if (isClosest) {
+                            // Track this as the selected marker
+                            selectedStationMarker = marker;
+                            
                             // Add a small delay to ensure marker is fully rendered
                             setTimeout(() => {
                                 updateStationChart(station.stationReference);
